@@ -1,0 +1,6 @@
+{
+  "name": "Maths Engineering CRM",
+  "description": "Comprehensive B2B dashboard companion for college partnerships tracking onboarding, LMS metrics, invoices and custom proposal dispatches.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
