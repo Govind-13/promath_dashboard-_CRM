@@ -12,7 +12,7 @@ import time
 ROOT = Path(__file__).resolve().parent
 DIST_DIR = ROOT / "frontend" / "dist"
 HTML_FILE = ROOT / "promath_crm_dashboard_ui_upgraded (16) (1).html"
-SERVE_FRONTEND_DIST = os.getenv("SERVE_FRONTEND_DIST", "0") == "1"
+SERVE_FRONTEND_DIST = True
 
 
 def load_dotenv(path):
