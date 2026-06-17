@@ -1,21 +1,26 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import type { College, AppData } from '../../types/college.types';
 import { STAGES } from '../../constants/stages';
 import CollegeTable from './CollegeTable';
+import { parseExcelFile } from '../../utils/excel';
 
 interface Props {
   role: string;
   data: AppData;
   onSelect: (id: string) => void;
   onAdd: () => void;
+  onBulkAdd: (colleges: Partial<College>[]) => void;
+  onDelete: (id: string) => void;
   updateCollege: (id: string, fn: (c: College) => College) => void;
 }
 
 const STAGE_GROUPS = ['All', 'Discovery', 'Deal', 'Content', 'Implementation', 'Onboarding'];
 
-const AllColleges: React.FC<Props> = ({ role, data, onSelect, onAdd, updateCollege }) => {
+const AllColleges: React.FC<Props> = ({ role, data, onSelect, onAdd, onBulkAdd, onDelete, updateCollege }) => {
   const [search, setSearch] = useState('');
   const [groupFilter, setGroupFilter] = useState('All');
+  const [uploadMsg, setUploadMsg] = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const filtered = useMemo(() => {
     let list = data.colleges;
@@ -58,14 +63,44 @@ const AllColleges: React.FC<Props> = ({ role, data, onSelect, onAdd, updateColle
     return list;
   }, [data.colleges, role, search, groupFilter]);
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const rows = await parseExcelFile(file);
+      if (rows.length === 0) {
+        setUploadMsg('No valid rows found in file');
+      } else {
+        onBulkAdd(rows);
+        setUploadMsg(`${rows.length} colleges uploaded successfully`);
+      }
+    } catch (err) {
+      setUploadMsg('Error reading file: ' + (err instanceof Error ? err.message : 'unknown'));
+    }
+    if (fileRef.current) fileRef.current.value = '';
+    setTimeout(() => setUploadMsg(''), 4000);
+  };
+
   return (
     <div className="fade-in">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <h2 style={{ margin: 0 }}>All Colleges ({filtered.length})</h2>
         {role === 'admin' && (
-          <button className="btn btn-primary" onClick={onAdd}>+ Add College</button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn btn-secondary" onClick={() => fileRef.current?.click()}>
+              📤 Excel Upload
+            </button>
+            <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" style={{ display: 'none' }} onChange={handleFileUpload} />
+            <button className="btn btn-primary" onClick={onAdd}>+ Add College</button>
+          </div>
         )}
       </div>
+
+      {uploadMsg && (
+        <div style={{ padding: '10px 16px', marginBottom: 16, borderRadius: 8, background: uploadMsg.includes('Error') || uploadMsg.includes('No valid') ? '#FEE2E2' : '#D1FAE5', color: uploadMsg.includes('Error') || uploadMsg.includes('No valid') ? '#991B1B' : '#065F46', fontSize: 14 }}>
+          {uploadMsg}
+        </div>
+      )}
 
       <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
         <input
@@ -98,7 +133,12 @@ const AllColleges: React.FC<Props> = ({ role, data, onSelect, onAdd, updateColle
           <div style={{ fontSize: 13, color: '#6B7280' }}>Try adjusting your search or filters</div>
         </div>
       ) : (
-        <CollegeTable colleges={filtered} onSelect={onSelect} updateCollege={role === 'admin' ? updateCollege : undefined} />
+        <CollegeTable
+          colleges={filtered}
+          onSelect={onSelect}
+          updateCollege={role === 'admin' ? updateCollege : undefined}
+          onDelete={role === 'admin' ? onDelete : undefined}
+        />
       )}
     </div>
   );

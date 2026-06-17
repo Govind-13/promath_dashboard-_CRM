@@ -61,6 +61,16 @@ const App: React.FC = () => {
     setData(d => ({ ...d, colleges: [...d.colleges, c] }));
   };
 
+  const addColleges = (partials: Partial<College>[]) => {
+    const newOnes = partials.map(p => newCollege(p));
+    setData(d => ({ ...d, colleges: [...d.colleges, ...newOnes] }));
+  };
+
+  const deleteCollege = (id: string) => {
+    setData(d => ({ ...d, colleges: d.colleges.filter(c => c.id !== id) }));
+    if (selectedId === id) setView('colleges');
+  };
+
   const addNotif = (n: Notification) => {
     setData(d => ({ ...d, notifications: [...d.notifications, n] }));
   };
@@ -169,6 +179,8 @@ const App: React.FC = () => {
             data={data}
             onSelect={selectCollege}
             onAdd={() => setShowAdd(true)}
+            onBulkAdd={addColleges}
+            onDelete={deleteCollege}
             updateCollege={updateCollege}
           />
         )}

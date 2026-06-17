@@ -7,11 +7,13 @@ interface Props {
   colleges: College[];
   onSelect: (id: string) => void;
   updateCollege?: (id: string, fn: (c: College) => College) => void;
+  onDelete?: (id: string) => void;
 }
 
-const CollegeTable: React.FC<Props> = ({ colleges, onSelect, updateCollege }) => {
+const CollegeTable: React.FC<Props> = ({ colleges, onSelect, updateCollege, onDelete }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const startEdit = (c: College, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -28,6 +30,17 @@ const CollegeTable: React.FC<Props> = ({ colleges, onSelect, updateCollege }) =>
 
   const cancelEdit = () => setEditingId(null);
 
+  const handleDelete = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (confirmDeleteId === id) {
+      onDelete?.(id);
+      setConfirmDeleteId(null);
+    } else {
+      setConfirmDeleteId(id);
+      setTimeout(() => setConfirmDeleteId(null), 3000);
+    }
+  };
+
   return (
     <table className="table">
       <thead>
@@ -36,6 +49,7 @@ const CollegeTable: React.FC<Props> = ({ colleges, onSelect, updateCollege }) =>
           <th>CONTACT</th>
           <th>CURRENT STAGE</th>
           <th>PROGRESS</th>
+          {onDelete && <th style={{ width: 60 }}>ACTION</th>}
         </tr>
       </thead>
       <tbody>
@@ -84,6 +98,18 @@ const CollegeTable: React.FC<Props> = ({ colleges, onSelect, updateCollege }) =>
                   <span style={{ fontSize: 13, fontFamily: 'var(--font-mono)', color: '#6B7280' }}>{pct}%</span>
                 </div>
               </td>
+              {onDelete && (
+                <td>
+                  <button
+                    className="btn-icon"
+                    onClick={e => handleDelete(c.id, e)}
+                    title={confirmDeleteId === c.id ? 'Click again to confirm' : 'Delete college'}
+                    style={{ color: confirmDeleteId === c.id ? '#DC2626' : '#6B7280', fontSize: confirmDeleteId === c.id ? 14 : 16 }}
+                  >
+                    {confirmDeleteId === c.id ? '⚠️ Sure?' : '🗑️'}
+                  </button>
+                </td>
+              )}
             </tr>
           );
         })}
