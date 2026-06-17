@@ -1,0 +1,8 @@
+.env
+__pycache__/
+*.pyc
+data/
+*.log
+node_modules/
+.npm-cache/
+backend/.npm-cache/

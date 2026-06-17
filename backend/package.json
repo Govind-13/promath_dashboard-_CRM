@@ -1,0 +1,27 @@
+{
+  "name": "promath-crm-backend",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "nest start --watch",
+    "build": "nest build",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@nestjs/common": "latest",
+    "@nestjs/config": "latest",
+    "@nestjs/core": "latest",
+    "@nestjs/mongoose": "latest",
+    "@nestjs/platform-express": "latest",
+    "mongoose": "latest",
+    "reflect-metadata": "latest",
+    "rxjs": "latest"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "latest",
+    "@nestjs/schematics": "latest",
+    "@nestjs/testing": "latest",
+    "@types/node": "latest",
+    "typescript": "latest"
+  }
+}
