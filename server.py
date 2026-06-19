@@ -286,7 +286,7 @@ def ensure_default_admin():
     if not ADMIN_EMAIL or not ADMIN_PASSWORD:
         return
     store = get_store()
-    if store.admin_exists():
+    if store.find_user_by_email(ADMIN_EMAIL):
         return
     store.create_user(
         {

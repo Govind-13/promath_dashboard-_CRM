@@ -73,7 +73,9 @@ in localStorage for the current release.
 
 ## Default Admin
 
-On first NestJS startup, an admin is created only when no admin exists:
+On NestJS startup, the configured admin is created when that email does not
+already exist. Changing `ADMIN_EMAIL` can therefore seed an additional admin
+without removing existing admins:
 
 ```text
 ADMIN_EMAIL=<admin email>

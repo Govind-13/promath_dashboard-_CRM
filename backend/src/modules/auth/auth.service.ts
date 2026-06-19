@@ -41,9 +41,6 @@ export class AuthService {
   }
 
   async ensureDefaultAdmin() {
-    const existingAdmin = await this.users.existsByRole("admin");
-    if (existingAdmin) return;
-
     const email = this.config.get<string>("ADMIN_EMAIL");
     const password = this.config.get<string>("ADMIN_PASSWORD");
     const name = this.config.get<string>("ADMIN_NAME") ?? "Admin";
@@ -51,6 +48,9 @@ export class AuthService {
     if (!email || !password) {
       return;
     }
+
+    const existingUser = await this.users.findByEmail(email);
+    if (existingUser) return;
 
     await this.users.create({
       name,
