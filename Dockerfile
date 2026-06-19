@@ -26,7 +26,6 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY server.py .
-COPY "promath_crm_dashboard_ui_upgraded (16) (1).html" .
 COPY --from=frontend-build /frontend/dist ./frontend/dist
 
 EXPOSE 8000
