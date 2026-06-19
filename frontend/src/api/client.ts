@@ -54,8 +54,10 @@ export async function apiClient<T>(path: string, init: RequestInit = {}): Promis
   if (!response.ok) {
     const rawMessage = body?.message;
     const message =
-      typeof rawMessage === 'string'
-        ? rawMessage
+      Array.isArray(rawMessage)
+        ? rawMessage.join(', ')
+        : typeof rawMessage === 'string'
+          ? rawMessage
         : body?.error === 'version_conflict'
           ? 'This record was updated by another user. Please refresh before saving.'
           : `Request failed (${response.status})`;

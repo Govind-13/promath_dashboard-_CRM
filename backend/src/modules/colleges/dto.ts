@@ -5,6 +5,7 @@ import {
   IsString,
   Min,
   MinLength,
+  ValidateIf,
 } from "class-validator";
 
 export class CollegeDto {
@@ -19,7 +20,7 @@ export class CollegeDto {
   @IsOptional() @IsString() contactPerson?: string;
   @IsOptional() @IsString() designation?: string;
   @IsOptional() @IsString() phone?: string;
-  @IsOptional() @IsEmail() email?: string;
+  @IsOptional() @ValidateIf((_, value) => value !== "") @IsEmail() email?: string;
   @IsOptional() @IsString() website?: string;
   @IsOptional() @IsString() collegeType?: string;
   @IsOptional() @IsString() assignedTo?: string;
@@ -46,7 +47,7 @@ export class CreateCollegeDto {
   @IsOptional() @IsString() contactPerson?: string;
   @IsOptional() @IsString() designation?: string;
   @IsOptional() @IsString() phone?: string;
-  @IsOptional() @IsEmail() email?: string;
+  @IsOptional() @ValidateIf((_, value) => value !== "") @IsEmail() email?: string;
   @IsOptional() @IsString() website?: string;
   @IsOptional() @IsString() collegeType?: string;
   @IsOptional() @IsString() assignedTo?: string;

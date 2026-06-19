@@ -70,18 +70,21 @@ export const collegeRecordToUi = (record: CollegeRecord): College => ({
   version: record.version,
 });
 
-export const collegeUiToInput = (college: Partial<College>): CollegeInput => ({
-  name: college.name,
-  location: college.location,
-  contactPerson: college.contact_name,
-  designation: college.contact_designation,
-  phone: college.phone,
-  email: college.email,
-  collegeType: college.college_type,
-  status: college.current_status || 'active',
-  notes: college.additional_comments || '',
-  version: college.version,
-});
+export const collegeUiToInput = (college: Partial<College>): CollegeInput => {
+  const email = college.email?.trim();
+  return {
+    name: college.name,
+    location: college.location,
+    contactPerson: college.contact_name,
+    designation: college.contact_designation,
+    phone: college.phone,
+    email: email || undefined,
+    collegeType: college.college_type,
+    status: college.current_status || 'active',
+    notes: college.additional_comments || '',
+    version: college.version,
+  };
+};
 
 export const collegeApi = {
   list: () => apiClient<CollegeRecord[]>('/colleges'),

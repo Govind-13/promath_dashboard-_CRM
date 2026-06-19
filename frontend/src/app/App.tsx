@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import type { AppData, College, StageStatus } from '../types/college.types';
 import { ROLES } from '../constants/roles';
-import { authApi, type AuthUser } from '../api/authApi';
+import { authApi, type AuthUser, type UserRole } from '../api/authApi';
 import { collegeApi, collegeRecordToUi, collegeUiToInput } from '../api/collegeApi';
 import { stageApi, stageRecordToUi } from '../api/stageApi';
 import { notificationApi, notificationRecordToUi } from '../api/notificationApi';
@@ -20,6 +20,7 @@ import Detail from '../components/colleges/Detail';
 import AddModal from '../components/colleges/AddModal';
 import { AppLayout } from '../layouts/AppLayout';
 import { LoadingState } from '../components/States';
+import { WorkspaceSelect } from '../components/WorkspaceSelect';
 
 type View = 'dashboard' | 'colleges' | 'detail' | 'proposals';
 
@@ -39,6 +40,7 @@ const App: React.FC = () => {
   const [loaded, setLoaded] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const [error, setError] = useState('');
+  const [workspaceRole, setWorkspaceRole] = useState<UserRole | null>(null);
 
   const logout = useCallback(() => {
     authApi.logout();
@@ -46,6 +48,7 @@ const App: React.FC = () => {
     setLoaded(false);
     setSelectedId('');
     setView('dashboard');
+    setWorkspaceRole(null);
   }, []);
 
   useEffect(() => {
@@ -250,6 +253,7 @@ const App: React.FC = () => {
     const response = await authApi.login(email, password);
     setUser(response.user);
     setView('dashboard');
+    setWorkspaceRole(null);
   };
 
   if (!authChecked || (user && !loaded)) {
@@ -258,7 +262,25 @@ const App: React.FC = () => {
 
   if (!user) return <Login onLogin={handleLogin} />;
 
-  const role = user.role;
+  const availableRoles: UserRole[] = user.role === 'admin'
+    ? ['admin', 'content', 'implementation', 'engagement', 'billing']
+    : [user.role];
+
+  if (!workspaceRole) {
+    return (
+      <WorkspaceSelect
+        userName={user.name}
+        roles={availableRoles}
+        onSelect={selectedRole => {
+          setWorkspaceRole(selectedRole);
+          setView('dashboard');
+        }}
+        onLogout={logout}
+      />
+    );
+  }
+
+  const role = workspaceRole;
   const roleInfo = ROLES[role];
   const selectedCollege = data.colleges.find(college => college.id === selectedId);
   const canUseBilling = role === 'admin' || role === 'billing';
@@ -294,6 +316,11 @@ const App: React.FC = () => {
       activeView={view}
       unread={unreadForRole}
       onNavigate={id => setView(id as View)}
+      onSwitchWorkspace={() => {
+        setSelectedId('');
+        setView('dashboard');
+        setWorkspaceRole(null);
+      }}
       onLogout={logout}
     >
         {error && (

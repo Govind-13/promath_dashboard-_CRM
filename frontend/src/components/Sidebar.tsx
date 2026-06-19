@@ -12,6 +12,7 @@ interface SidebarProps {
   activeView: string;
   unread: number;
   onNavigate: (id: string) => void;
+  onSwitchWorkspace?: () => void;
   onLogout: () => void;
 }
 
@@ -23,6 +24,7 @@ export function Sidebar({
   activeView,
   unread,
   onNavigate,
+  onSwitchWorkspace,
   onLogout,
 }: SidebarProps) {
   return (
@@ -54,6 +56,11 @@ export function Sidebar({
             <small>{roleLabel}</small>
           </span>
         </div>
+        {onSwitchWorkspace && (
+          <button className="sidebar-logout" onClick={onSwitchWorkspace}>
+            <span>⇄</span> Switch workspace
+          </button>
+        )}
         <button className="sidebar-logout" onClick={onLogout}>
           <span>↪</span> Logout
         </button>

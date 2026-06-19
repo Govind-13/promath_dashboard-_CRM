@@ -387,6 +387,133 @@ textarea.input { resize: vertical; }
 }
 .login-submit { width: 100%; }
 
+.workspace-select-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 34px 20px;
+  background:
+    radial-gradient(circle at 18% 5%, rgba(23,92,211,.12), transparent 30%),
+    radial-gradient(circle at 84% 18%, rgba(105,65,198,.11), transparent 28%),
+    var(--bg);
+}
+.workspace-select-shell {
+  width: min(980px, 100%);
+  padding: 54px 56px 42px;
+  border: 1px solid rgba(255,255,255,.76);
+  border-radius: 30px;
+  background: rgba(255,255,255,.82);
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(16px);
+}
+.workspace-badge {
+  width: max-content;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 auto 20px;
+  padding: 5px 14px;
+  border-radius: 999px;
+  color: var(--accent);
+  background: var(--accent-light);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .25px;
+  text-transform: uppercase;
+}
+.workspace-badge span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #2e90fa;
+}
+.workspace-select-shell > h1 {
+  margin: 0;
+  text-align: center;
+  font-size: clamp(34px, 5vw, 54px);
+  letter-spacing: -1.8px;
+}
+.workspace-select-shell > h1 span { color: var(--accent); }
+.workspace-subtitle {
+  max-width: 720px;
+  margin: 9px auto 34px;
+  color: var(--muted);
+  text-align: center;
+  font-size: 13px;
+}
+.workspace-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+.workspace-card {
+  min-height: 210px;
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
+  padding: 26px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  color: var(--ink);
+  background: #fff;
+  text-align: left;
+  box-shadow: var(--shadow-xs);
+  transition: .18s ease;
+}
+.workspace-card:hover {
+  border-color: #b2ccff;
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-3px);
+}
+.workspace-icon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 18px;
+  border-radius: 11px;
+  font-size: 19px;
+}
+.workspace-card strong {
+  margin-bottom: 5px;
+  font: 600 19px var(--font-heading);
+}
+.workspace-description {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.55;
+}
+.workspace-enter {
+  margin-top: auto;
+  padding-top: 16px;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+}
+.workspace-admin .workspace-icon { color: #b54708; background: #fff4ed; }
+.workspace-content .workspace-icon { color: var(--accent); background: var(--accent-light); }
+.workspace-implementation .workspace-icon { color: var(--purple); background: var(--purple-bg); }
+.workspace-engagement .workspace-icon { color: var(--success); background: var(--success-bg); }
+.workspace-billing .workspace-icon { color: #087e8b; background: #ecfdff; }
+.workspace-admin .workspace-enter { color: #c4320a; }
+.workspace-engagement .workspace-enter { color: var(--success); }
+.workspace-billing .workspace-enter { color: #087e8b; }
+.workspace-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  margin-top: 38px;
+  color: var(--muted-soft);
+  font-size: 10px;
+}
+.workspace-footer button {
+  border: 0;
+  color: var(--muted);
+  background: transparent;
+  text-decoration: underline;
+}
+
 @media (max-width: 1120px) {
   .dashboard-workspace { grid-template-columns: 1fr; }
   .pipeline-panel, .updates-panel { min-height: auto; }
@@ -398,6 +525,8 @@ textarea.input { resize: vertical; }
   .stage-editor { padding: 0 12px 16px; }
   .stage-row-side .stage-date { display: none; }
   .modal { padding: 22px 18px; border-radius: 18px; }
+  .workspace-select-shell { padding: 36px 24px 28px; border-radius: 24px; }
+  .workspace-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 520px) {
   .header-card { align-items: flex-start; flex-direction: column; }
@@ -409,4 +538,9 @@ textarea.input { resize: vertical; }
   .stage-row-button { padding: 14px; }
   .stage-row-side .pill { display: none; }
   .login-card { padding: 28px 20px; }
+  .workspace-select-page { padding: 16px; align-items: start; }
+  .workspace-select-shell { padding: 30px 17px 24px; }
+  .workspace-grid { grid-template-columns: 1fr; }
+  .workspace-card { min-height: 180px; padding: 22px; }
+  .workspace-footer { align-items: center; flex-direction: column; text-align: center; }
 }

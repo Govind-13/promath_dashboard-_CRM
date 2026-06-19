@@ -67,7 +67,9 @@ const AdminDash: React.FC<Props> = ({
     .filter(notification => notification.role === 'admin' && !notification.read)
     .slice(0, 5);
 
-  const displayName = userName?.split(' ')[0] || 'Harsha';
+  const displayName = userName?.toLowerCase().includes('promath')
+    ? 'Harsha'
+    : userName?.split(' ')[0] || 'Harsha';
   const today = new Date().toLocaleDateString('en-GB', {
     weekday: 'long',
     day: '2-digit',

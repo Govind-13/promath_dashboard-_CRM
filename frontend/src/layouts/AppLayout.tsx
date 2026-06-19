@@ -10,6 +10,7 @@ interface AppLayoutProps {
   activeView: string;
   unread: number;
   onNavigate: (id: string) => void;
+  onSwitchWorkspace?: () => void;
   onLogout: () => void;
 }
 
@@ -22,6 +23,7 @@ export function AppLayout({
   activeView,
   unread,
   onNavigate,
+  onSwitchWorkspace,
   onLogout,
 }: AppLayoutProps) {
   return (
@@ -34,6 +36,7 @@ export function AppLayout({
         activeView={activeView}
         unread={unread}
         onNavigate={onNavigate}
+        onSwitchWorkspace={onSwitchWorkspace}
         onLogout={onLogout}
       />
       <main className="main-content">
