@@ -1,15 +1,17 @@
-import React, { useState, useMemo, useRef } from 'react';
+import { useMemo, useState } from 'react';
 import type { College, AppData } from '../../types/college.types';
 import { STAGES } from '../../constants/stages';
 import CollegeTable from './CollegeTable';
-import { parseExcelFile } from '../../utils/excel';
+import { SearchInput } from '../SearchInput';
+import { EmptyState } from '../States';
+import { BulkUploadModal } from '../BulkUploadModal';
 
 interface Props {
   role: string;
   data: AppData;
   onSelect: (id: string) => void;
   onAdd: () => void;
-  onBulkAdd: (colleges: Partial<College>[]) => void;
+  onBulkAdd: (colleges: Partial<College>[], fileName: string) => Promise<void>;
   onDelete: (id: string) => void;
   updateCollege: (id: string, fn: (c: College) => College) => void;
 }
@@ -20,106 +22,82 @@ const AllColleges: React.FC<Props> = ({ role, data, onSelect, onAdd, onBulkAdd, 
   const [search, setSearch] = useState('');
   const [groupFilter, setGroupFilter] = useState('All');
   const [uploadMsg, setUploadMsg] = useState('');
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [showUpload, setShowUpload] = useState(false);
 
   const filtered = useMemo(() => {
     let list = data.colleges;
-
     if (role === 'content') {
-      list = list.filter(c => c.stages.syllabus_submission?.status === 'completed');
+      list = list.filter(college => college.stages.syllabus_submission?.status === 'completed');
     } else if (role === 'implementation') {
-      list = list.filter(c =>
-        c.stages.student_data?.status !== 'not_started' ||
-        c.stages.license_creation?.status !== 'not_started'
+      list = list.filter(college =>
+        college.stages.student_data?.status !== 'not_started' ||
+        college.stages.license_creation?.status !== 'not_started',
       );
     } else if (role === 'engagement') {
-      list = list.filter(c =>
-        c.stages.impl_feedback?.status !== 'not_started' ||
-        c.stages.orientation?.status !== 'not_started'
+      list = list.filter(college =>
+        college.stages.impl_feedback?.status !== 'not_started' ||
+        college.stages.orientation?.status !== 'not_started',
       );
     }
 
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      list = list.filter(c =>
-        c.name.toLowerCase().includes(q) ||
-        c.contact_name.toLowerCase().includes(q) ||
-        c.location.toLowerCase().includes(q)
+    const query = search.trim().toLowerCase();
+    if (query) {
+      list = list.filter(college =>
+        [college.name, college.contact_name, college.location]
+          .some(value => value.toLowerCase().includes(query)),
       );
     }
 
     if (groupFilter !== 'All' && role === 'admin') {
-      const groupStageIds = STAGES.filter(s => s.group === groupFilter).map(s => s.id);
-      list = list.filter(c => {
-        const currentIdx = STAGES.findIndex(s => {
-          const sd = c.stages[s.id];
-          return !sd || sd.status !== 'completed';
-        });
-        const currentStage = STAGES[currentIdx === -1 ? STAGES.length - 1 : currentIdx];
+      const groupStageIds = STAGES.filter(stage => stage.group === groupFilter).map(stage => stage.id);
+      list = list.filter(college => {
+        const currentIndex = STAGES.findIndex(stage => college.stages[stage.id]?.status !== 'completed');
+        const currentStage = STAGES[currentIndex === -1 ? STAGES.length - 1 : currentIndex];
         return groupStageIds.includes(currentStage.id);
       });
     }
-
     return list;
   }, [data.colleges, role, search, groupFilter]);
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const rows = await parseExcelFile(file);
-      if (rows.length === 0) {
-        setUploadMsg('No valid rows found in file');
-      } else {
-        onBulkAdd(rows);
-        setUploadMsg(`${rows.length} colleges uploaded successfully`);
-      }
-    } catch (err) {
-      setUploadMsg('Error reading file: ' + (err instanceof Error ? err.message : 'unknown'));
-    }
-    if (fileRef.current) fileRef.current.value = '';
-    setTimeout(() => setUploadMsg(''), 4000);
+  const handleBulkUpload = async (rows: Partial<College>[], fileName: string) => {
+    await onBulkAdd(rows, fileName);
+    setUploadMsg(`${rows.length} colleges uploaded successfully`);
+    window.setTimeout(() => setUploadMsg(''), 4000);
   };
 
   return (
-    <div className="fade-in">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <h2 style={{ margin: 0 }}>All Colleges ({filtered.length})</h2>
+    <div className="fade-in page-stack">
+      <div className="page-heading">
+        <div>
+          <h2>All Colleges ({filtered.length})</h2>
+          <p>Search, filter, update, and manage college pipeline records.</p>
+        </div>
         {role === 'admin' && (
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn btn-secondary" onClick={() => fileRef.current?.click()}>
-              📤 Excel Upload
-            </button>
-            <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" style={{ display: 'none' }} onChange={handleFileUpload} />
+          <div className="page-actions">
+            <button className="btn btn-secondary" onClick={() => setShowUpload(true)}>⇧ Excel Upload</button>
             <button className="btn btn-primary" onClick={onAdd}>+ Add College</button>
           </div>
         )}
       </div>
 
-      {uploadMsg && (
-        <div style={{ padding: '10px 16px', marginBottom: 16, borderRadius: 8, background: uploadMsg.includes('Error') || uploadMsg.includes('No valid') ? '#FEE2E2' : '#D1FAE5', color: uploadMsg.includes('Error') || uploadMsg.includes('No valid') ? '#991B1B' : '#065F46', fontSize: 14 }}>
-          {uploadMsg}
-        </div>
-      )}
+      {uploadMsg && <div className="inline-alert success">{uploadMsg}</div>}
 
-      <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
-        <input
-          className="input"
-          style={{ flex: 1, minWidth: 200 }}
+      <div className="filter-bar">
+        <SearchInput
+          className="filter-search"
           placeholder="Search by name, contact, or location..."
           value={search}
-          onChange={e => setSearch(e.target.value)}
+          onChange={setSearch}
         />
         {role === 'admin' && (
-          <div style={{ display: 'flex', gap: 4 }}>
-            {STAGE_GROUPS.map(g => (
+          <div className="filter-pills">
+            {STAGE_GROUPS.map(group => (
               <button
-                key={g}
-                className={`btn ${groupFilter === g ? 'btn-primary' : 'btn-secondary'}`}
-                style={{ fontSize: 12, padding: '6px 12px' }}
-                onClick={() => setGroupFilter(g)}
+                key={group}
+                className={`btn ${groupFilter === group ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setGroupFilter(group)}
               >
-                {g}
+                {group}
               </button>
             ))}
           </div>
@@ -127,11 +105,7 @@ const AllColleges: React.FC<Props> = ({ role, data, onSelect, onAdd, onBulkAdd, 
       </div>
 
       {filtered.length === 0 ? (
-        <div className="empty-state">
-          <div style={{ fontSize: 48, marginBottom: 8 }}>🏫</div>
-          <div>No colleges found</div>
-          <div style={{ fontSize: 13, color: '#6B7280' }}>Try adjusting your search or filters</div>
-        </div>
+        <EmptyState icon="⌕" title="No colleges found" message="Try adjusting your search or stage filters." />
       ) : (
         <CollegeTable
           colleges={filtered}
@@ -140,6 +114,8 @@ const AllColleges: React.FC<Props> = ({ role, data, onSelect, onAdd, onBulkAdd, 
           onDelete={role === 'admin' ? onDelete : undefined}
         />
       )}
+
+      {showUpload && <BulkUploadModal onClose={() => setShowUpload(false)} onUpload={handleBulkUpload} />}
     </div>
   );
 };

@@ -1,18 +1,25 @@
-# Promath CRM Backend
+# Promath CRM NestJS API
 
-Current backend runtime is still `../server.py`.
-
-This folder is the modular backend migration area. It mirrors the structure from the project document, using NestJS + Mongoose + MongoDB.
-
-Run current backend:
+This is the primary Promath CRM backend.
 
 ```powershell
-..\scripts\start-backend.ps1
-```
-
-Future NestJS backend:
-
-```powershell
-npm install
+npm ci
 npm run dev
 ```
+
+Production:
+
+```powershell
+npm run build
+npm start
+```
+
+Tests:
+
+```powershell
+npm run build
+npm test
+```
+
+See `../README.md` for architecture, environment variables, MongoDB Atlas,
+deployment, migration, and legacy cleanup guidance.

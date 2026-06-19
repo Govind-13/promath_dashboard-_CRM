@@ -1,127 +1,170 @@
-import React from 'react';
-import type { AppData, College, Notification } from '../../types/college.types';
+import React, { useMemo, useState } from 'react';
+import type { AppData, College } from '../../types/college.types';
 import { STAGES } from '../../constants/stages';
 import { getStageIdx, getProgress, formatDate, greeting } from '../../utils/college';
+import { HeaderCard } from '../HeaderCard';
+import { StatCard } from '../StatCard';
+import { SearchInput } from '../SearchInput';
+import { KanbanBoard } from '../KanbanBoard';
+import { NotificationPanel } from '../NotificationPanel';
 
 interface Props {
   data: AppData;
+  userName: string;
   onSelect: (id: string) => void;
+  onAdd: () => void;
   updateCollege: (id: string, fn: (c: College) => College) => void;
   markNotifRead: (id: string) => void;
+  deleteNotif: (id: string) => void;
 }
 
-const AdminDash: React.FC<Props> = ({ data, onSelect, updateCollege: _, markNotifRead }) => {
-  const colleges = data.colleges;
-  const totalValue = colleges.reduce((sum, c) => {
-    const val = Number(c.stages.pricing_negotiation?.data?.total_value) || 0;
-    return sum + val;
-  }, 0);
-  const completed = colleges.filter(c => getProgress(c) === 100).length;
-  const inProgress = colleges.filter(c => { const p = getProgress(c); return p > 0 && p < 100; }).length;
-  const notStarted = colleges.filter(c => getProgress(c) === 0).length;
+const GROUPS = ['Discovery', 'Deal', 'Content', 'Implementation', 'Onboarding', 'Complete'];
 
-  const kanbanGroups = ['Discovery', 'Deal', 'Content', 'Implementation', 'Onboarding'];
-  const kanbanData = kanbanGroups.map(group => {
-    const stageIds = STAGES.filter(s => s.group === group).map(s => s.id);
-    const groupColleges = colleges.filter(c => {
-      const idx = getStageIdx(c);
-      return stageIds.includes(STAGES[idx].id);
-    });
-    return { group, colleges: groupColleges };
+const AdminDash: React.FC<Props> = ({
+  data,
+  userName,
+  onSelect,
+  onAdd,
+  updateCollege: _,
+  markNotifRead,
+  deleteNotif: _deleteNotif,
+}) => {
+  const [query, setQuery] = useState('');
+  const colleges = data.colleges;
+
+  const filteredColleges = useMemo(() => {
+    const term = query.trim().toLowerCase();
+    if (!term) return colleges;
+    return colleges.filter(college =>
+      [college.name, college.contact_name, college.location, college.email]
+        .some(value => value?.toLowerCase().includes(term)),
+    );
+  }, [colleges, query]);
+
+  const totalValue = colleges.reduce((sum, college) => {
+    const value = Number(college.stages.pricing_negotiation?.data?.total_value) || 0;
+    return sum + value;
+  }, 0);
+  const activePipeline = colleges.filter(college => getProgress(college) < 100).length;
+  const mouSigned = colleges.filter(college => college.stages.mou_signing?.status === 'completed').length;
+  const inImplementation = colleges.filter(college => STAGES[getStageIdx(college)]?.group === 'Implementation').length;
+  const liveColleges = colleges.filter(college => getProgress(college) === 100).length;
+
+  const kanbanData = GROUPS.map(group => {
+    if (group === 'Complete') {
+      return { group, colleges: filteredColleges.filter(college => getProgress(college) === 100) };
+    }
+    const stageIds = STAGES.filter(stage => stage.group === group).map(stage => stage.id);
+    return {
+      group,
+      colleges: filteredColleges.filter(college =>
+        getProgress(college) < 100 && stageIds.includes(STAGES[getStageIdx(college)]?.id),
+      ),
+    };
   });
 
-  const unreadNotifs = data.notifications.filter(n => n.role === 'admin' && !n.read);
-  const recentColleges = [...colleges].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 5);
+  const unreadNotifs = data.notifications
+    .filter(notification => notification.role === 'admin' && !notification.read)
+    .slice(0, 5);
+
+  const displayName = userName?.split(' ')[0] || 'Harsha';
+  const today = new Date().toLocaleDateString('en-GB', {
+    weekday: 'long',
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  });
+  const pipelineValue = totalValue >= 100000
+    ? `₹${(totalValue / 100000).toFixed(1)}L`
+    : `₹${totalValue.toLocaleString('en-IN')}`;
+
+  const stats = [
+    { label: 'Total Colleges', value: colleges.length, icon: '🏛️' },
+    { label: 'Active Pipeline', value: activePipeline, icon: '📈' },
+    { label: 'MOUs Signed', value: mouSigned, icon: '📄' },
+    { label: 'In Implementation', value: inImplementation, icon: '⚡' },
+    { label: 'Live Colleges', value: liveColleges, icon: '✅' },
+    { label: 'Pipeline Value', value: pipelineValue, icon: '💰' },
+  ];
+  const recentColleges = [...colleges]
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 6);
 
   return (
-    <div className="fade-in">
-      <h2>{greeting()}, Harsha</h2>
-      <p style={{ color: '#6B7280', marginTop: -8, marginBottom: 24 }}>Here is your pipeline overview</p>
+    <div className="admin-dashboard fade-in page-stack">
+      <HeaderCard
+        title={`${greeting()}, ${displayName}`}
+        subtitle={today}
+        action={<button className="btn btn-primary" onClick={onAdd}>+ Add College</button>}
+      />
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 32 }}>
-        <div className="stat-card">
-          <div className="stat-label">Total Colleges</div>
-          <div className="stat-value">{colleges.length}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">Pipeline Value</div>
-          <div className="stat-value" style={{ fontSize: 22 }}>
-            {totalValue >= 100000 ? `${(totalValue / 100000).toFixed(1)}L` : totalValue.toLocaleString('en-IN')}
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">In Progress</div>
-          <div className="stat-value">{inProgress}</div>
-          <div style={{ fontSize: 12, color: '#6B7280' }}>{completed} done, {notStarted} new</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">Notifications</div>
-          <div className="stat-value">{unreadNotifs.length}</div>
-          <div style={{ fontSize: 12, color: '#6B7280' }}>unread</div>
-        </div>
-      </div>
+      <SearchInput
+        className="dashboard-search"
+        value={query}
+        onChange={setQuery}
+        placeholder="Search colleges by name, contact, or location..."
+      />
 
-      <h3 style={{ marginBottom: 12 }}>Pipeline Kanban</h3>
-      <div className="kanban" style={{ marginBottom: 32 }}>
-        {kanbanData.map(({ group, colleges: gc }) => (
-          <div key={group} className="kanban-column">
-            <div className="kanban-header">
-              {group} <span style={{ opacity: 0.6 }}>({gc.length})</span>
-            </div>
-            {gc.length === 0 && <div style={{ padding: 12, color: '#9CA3AF', fontSize: 13 }}>No colleges</div>}
-            {gc.map(c => (
-              <div key={c.id} className="task-card" onClick={() => onSelect(c.id)} style={{ cursor: 'pointer' }}>
-                <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>{c.name}</div>
-                <div style={{ fontSize: 11, color: '#6B7280' }}>{c.location} | {c.contact_name}</div>
-                <div className="progress-bar" style={{ marginTop: 6 }}>
-                  <div className="progress-fill" style={{ width: `${getProgress(c)}%` }} />
-                </div>
-              </div>
-            ))}
-          </div>
+      <section className="dashboard-stats grid-6">
+        {stats.map(stat => (
+          <StatCard key={stat.label} {...stat} />
         ))}
-      </div>
+      </section>
 
-      {unreadNotifs.length > 0 && (
-        <>
-          <h3 style={{ marginBottom: 12 }}>Notifications</h3>
-          <div style={{ marginBottom: 32 }}>
-            {unreadNotifs.map(n => (
-              <div key={n.id} className="notif" onClick={() => markNotifRead(n.id)}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14 }}>{n.message}</div>
-                  <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>{formatDate(n.timestamp)}</div>
-                </div>
-                <button className="btn-icon" title="Mark read">✓</button>
-              </div>
-            ))}
+      <section className="dashboard-workspace">
+        <div className="pipeline-panel card">
+          <div className="panel-heading">
+            <h2>Sales Pipeline</h2>
+            <p>Colleges grouped by current stage</p>
           </div>
-        </>
-      )}
+          <KanbanBoard
+            columns={kanbanData.map(item => ({ title: item.group, colleges: item.colleges }))}
+            onSelect={onSelect}
+          />
+        </div>
 
-      <h3 style={{ marginBottom: 12 }}>Recent Activity</h3>
-      <table className="table">
-        <thead>
-          <tr>
-            <th>COLLEGE</th>
-            <th>TYPE</th>
-            <th>LOCATION</th>
-            <th>STUDENTS</th>
-            <th>ADDED</th>
-          </tr>
-        </thead>
-        <tbody>
-          {recentColleges.map(c => (
-            <tr key={c.id} onClick={() => onSelect(c.id)} style={{ cursor: 'pointer' }}>
-              <td><strong>{c.name}</strong></td>
-              <td>{c.college_type}</td>
-              <td>{c.location}</td>
-              <td style={{ fontFamily: 'var(--font-mono)' }}>{c.total_students}</td>
-              <td style={{ fontSize: 13, color: '#6B7280' }}>{formatDate(c.created_at)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+        <aside className="updates-panel card">
+          <NotificationPanel notifications={unreadNotifs} onRead={markNotifRead} />
+        </aside>
+      </section>
+
+      <section className="recent-activity card">
+        <div className="panel-heading">
+          <h2>Recent Activity</h2>
+          <p>Recently added colleges and their current pipeline status</p>
+        </div>
+        <div className="table-wrap">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>College</th>
+                <th>Type</th>
+                <th>Location</th>
+                <th>Stage</th>
+                <th>Progress</th>
+                <th>Added</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recentColleges.map(college => (
+                <tr key={college.id} onClick={() => onSelect(college.id)}>
+                  <td><strong>{college.name}</strong></td>
+                  <td>{college.college_type || '—'}</td>
+                  <td>{college.location || '—'}</td>
+                  <td><span className="pill pill-primary">{getProgress(college) === 100 ? 'Complete' : STAGES[getStageIdx(college)]?.group}</span></td>
+                  <td>
+                    <div className="progress-wrap">
+                      <div className="progress-bar"><div className="progress-fill" style={{ width: `${getProgress(college)}%` }} /></div>
+                      <span className="mono">{getProgress(college)}%</span>
+                    </div>
+                  </td>
+                  <td>{formatDate(college.created_at)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   );
 };

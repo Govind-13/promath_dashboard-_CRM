@@ -1,6 +1,7 @@
 export type StageStatus = 'not_started' | 'in_progress' | 'completed';
 
 export interface StageData {
+  id?: string;
   status: StageStatus;
   completed_at: string | null;
   data: Record<string, unknown>;
@@ -20,6 +21,7 @@ export interface College {
   current_status?: string;
   additional_comments?: string;
   created_at: string;
+  version?: number;
   stages: Record<string, StageData>;
   engagement_journey?: Record<string, boolean>;
   automation_journey?: JourneyStep[];

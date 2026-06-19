@@ -9,8 +9,7 @@ interface Props {
   stageData: StageData;
   college: College;
   canEdit: boolean;
-  onUpdate: (data: Record<string, unknown>) => void;
-  onComplete: () => void;
+  onUpdate: (data: Record<string, unknown>, status?: StageData['status']) => void;
 }
 
 const Field: React.FC<{ label: string; value: string; onChange: (v: string) => void; disabled: boolean; type?: string; rows?: number; placeholder?: string }> = ({ label, value, onChange, disabled, type, rows, placeholder }) => (
@@ -24,7 +23,7 @@ const Field: React.FC<{ label: string; value: string; onChange: (v: string) => v
   </div>
 );
 
-const StageEditor: React.FC<Props> = ({ stage, stageData, college, canEdit, onUpdate, onComplete }) => {
+const StageEditor: React.FC<Props> = ({ stage, stageData, college, canEdit, onUpdate }) => {
   const [form, setForm] = useState<Record<string, unknown>>(stageData.data || {});
 
   useEffect(() => { setForm(stageData.data || {}); }, [stageData]);
@@ -34,9 +33,9 @@ const StageEditor: React.FC<Props> = ({ stage, stageData, college, canEdit, onUp
   const completed = stageData.status === 'completed';
   const editable = canEdit && !completed;
 
-  const saveDraft = () => onUpdate(form);
-  const markInProgress = () => { onUpdate(form); };
-  const markCompleted = () => { onUpdate(form); onComplete(); };
+  const saveDraft = () => onUpdate(form, stageData.status === 'not_started' ? 'in_progress' : stageData.status);
+  const markInProgress = () => onUpdate(form, 'in_progress');
+  const markCompleted = () => onUpdate(form, 'completed');
 
   const renderFields = () => {
     switch (stage.id) {
@@ -132,7 +131,7 @@ const StageEditor: React.FC<Props> = ({ stage, stageData, college, canEdit, onUp
   };
 
   return (
-    <div className="stage-editor">
+    <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
         <span style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', color: completed ? '#2D7A4F' : stageData.status === 'in_progress' ? '#B8410A' : '#6B7280' }}>
           {completed ? '✅ Completed' : stageData.status === 'in_progress' ? '🔄 In Progress' : '⏳ Not Started'}

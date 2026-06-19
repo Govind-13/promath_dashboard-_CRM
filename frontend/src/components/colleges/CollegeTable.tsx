@@ -42,7 +42,7 @@ const CollegeTable: React.FC<Props> = ({ colleges, onSelect, updateCollege, onDe
   };
 
   return (
-    <table className="table">
+    <div className="table-wrap"><table className="table">
       <thead>
         <tr>
           <th>COLLEGE</th>
@@ -114,7 +114,7 @@ const CollegeTable: React.FC<Props> = ({ colleges, onSelect, updateCollege, onDe
           );
         })}
       </tbody>
-    </table>
+    </table></div>
   );
 };
 

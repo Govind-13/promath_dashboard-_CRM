@@ -165,12 +165,13 @@ Each college has a `stages` record: `{ [stage_id]: { status, completed_at, data 
 | **engagement** | Colleges in feedback/orientation | Tabs: overview, pipeline, actions, journey, usage |
 | **billing** | Separate billing module | Quotation/invoice CRUD with GST |
 
-Admin login requires password: `promath2025`. Other roles are one-click.
+All roles authenticate through the backend using email/password and JWT. The
+authenticated user's backend role controls dashboard and API permissions.
 
 ## Key Features
 
 - **College CRUD**: Add, edit name inline, delete with confirmation (click twice)
-- **Excel Bulk Upload**: Upload `.xlsx`/`.xls`/`.csv` files; auto-maps columns (name, contact, phone, email, location, students)
+- **Excel Bulk Upload**: Upload `.xlsx`/`.csv` files; auto-maps columns (name, contact, phone, email, location, students)
 - **Stage Tracking**: Click any college → Detail view → edit each stage's status and data
 - **Billing**: Quotations and invoices with line items, GST calculation, HTML download
 - **Proposals**: Auto-prefill from pricing stage, feature checkboxes, HTML download

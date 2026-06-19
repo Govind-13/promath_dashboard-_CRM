@@ -1,0 +1,12 @@
+.git
+.gitignore
+
+frontend/node_modules
+frontend/dist
+backend/node_modules
+backend/dist
+backend/tsconfig.tsbuildinfo
+
+__pycache__
+*.pyc
+.env

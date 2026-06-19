@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import type { ProposalDoc, BillingStore } from '../../types/billing.types';
+import type { ProposalDoc } from '../../types/billing.types';
 import type { AppData } from '../../types/college.types';
-import { storage } from '../../services/api';
-
-const BILLING_KEY = 'promath_billing_v2';
+import { billingApi, billingRecordToUi, billingUiToInput } from '../../api/billingApi';
 
 const FEATURE_OPTIONS = [
   'Full syllabus coverage',
@@ -27,24 +25,15 @@ interface Props {
 const ProposalGenerator: React.FC<Props> = ({ data }) => {
   const [proposals, setProposals] = useState<ProposalDoc[]>([]);
   const [editing, setEditing] = useState<ProposalDoc | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    storage.get(BILLING_KEY).then(res => {
-      if (res?.value) {
-        const s: BillingStore = JSON.parse(res.value);
-        setProposals(s.proposals || []);
-      }
-    });
+    billingApi.list()
+      .then(records => setProposals(records.map(billingRecordToUi)))
+      .catch(err => setError(err instanceof Error ? err.message : 'Unable to load proposals'))
+      .finally(() => setLoading(false));
   }, []);
-
-  const persist = (list: ProposalDoc[]) => {
-    setProposals(list);
-    storage.get(BILLING_KEY).then(res => {
-      const s: BillingStore = res?.value ? JSON.parse(res.value) : { quotations: [], invoices: [], proposals: [] };
-      s.proposals = list;
-      storage.set(BILLING_KEY, JSON.stringify(s));
-    });
-  };
 
   const startNew = () => {
     setEditing({
@@ -76,15 +65,33 @@ const ProposalGenerator: React.FC<Props> = ({ data }) => {
     setEditing({ ...editing, features });
   };
 
-  const save = () => {
+  const save = async () => {
     if (!editing) return;
-    const idx = proposals.findIndex(p => p.id === editing.id);
-    const next = idx >= 0 ? proposals.map((p, i) => i === idx ? editing : p) : [...proposals, editing];
-    persist(next);
-    setEditing(null);
+    try {
+      const exists = proposals.some(proposal => proposal.id === editing.id);
+      const record = exists
+        ? await billingApi.update(editing.id, billingUiToInput(editing))
+        : await billingApi.create(billingUiToInput(editing));
+      const saved = billingRecordToUi(record);
+      setProposals(current => exists
+        ? current.map(proposal => proposal.id === editing.id ? saved : proposal)
+        : [...current, saved]);
+      setEditing(null);
+      setError('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to save proposal');
+    }
   };
 
-  const deleteProposal = (id: string) => persist(proposals.filter(p => p.id !== id));
+  const deleteProposal = async (id: string) => {
+    try {
+      await billingApi.delete(id);
+      setProposals(current => current.filter(proposal => proposal.id !== id));
+      setError('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to delete proposal');
+    }
+  };
 
   const download = (p: ProposalDoc) => {
     const featList = p.features.map(f => `  - ${f}`).join('\n');
@@ -101,6 +108,7 @@ const ProposalGenerator: React.FC<Props> = ({ data }) => {
       <div className="fade-in">
         <button className="btn btn-secondary" onClick={() => setEditing(null)} style={{ marginBottom: 16 }}>← Back</button>
         <h2>Proposal Builder</h2>
+        {error && <div style={{ color: '#991B1B', background: '#FEF2F2', border: '1px solid #FECACA', padding: 10, marginBottom: 16 }}>{error}</div>}
 
         <div className="field" style={{ marginBottom: 16 }}>
           <label className="label">Prefill from College</label>
@@ -182,7 +190,10 @@ const ProposalGenerator: React.FC<Props> = ({ data }) => {
         <button className="btn btn-primary" onClick={startNew}>+ New Proposal</button>
       </div>
 
-      {proposals.length === 0 ? (
+      {error && <div style={{ color: '#991B1B', background: '#FEF2F2', border: '1px solid #FECACA', padding: 10, marginBottom: 16 }}>{error}</div>}
+      {loading ? (
+        <div className="empty-state">Loading proposals...</div>
+      ) : proposals.length === 0 ? (
         <div className="empty-state">
           <div style={{ fontSize: 48, marginBottom: 8 }}>📄</div>
           <div>No proposals yet</div>

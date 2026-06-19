@@ -1,9 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import type { BillingDoc, BillingStore, LineItem } from '../../types/billing.types';
-import { storage } from '../../services/api';
 import { greeting, formatDate } from '../../utils/college';
-
-const BILLING_KEY = 'promath_billing_v2';
 
 const emptyStore = (): BillingStore => ({ quotations: [], invoices: [], proposals: [] });
 
@@ -19,15 +16,8 @@ const BillingDash: React.FC = () => {
   const [tab, setTab] = useState<'quotation' | 'invoice'>('quotation');
   const [editDoc, setEditDoc] = useState<BillingDoc | null>(null);
 
-  useEffect(() => {
-    storage.get(BILLING_KEY).then(res => {
-      if (res?.value) setStore(JSON.parse(res.value));
-    });
-  }, []);
-
   const persist = (s: BillingStore) => {
     setStore(s);
-    storage.set(BILLING_KEY, JSON.stringify(s));
   };
 
   const docs = tab === 'quotation' ? store.quotations : store.invoices;

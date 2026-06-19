@@ -1,9 +1,14 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import type { AppData, College, Notification } from '../types/college.types';
+import React, { useCallback, useEffect, useState } from 'react';
+import type { AppData, College, StageStatus } from '../types/college.types';
 import { ROLES } from '../constants/roles';
-import { storage } from '../services/api';
-import { sampleData, sampleNotifs } from '../data/sample';
-import { newCollege, getProgress, greeting } from '../utils/college';
+import { authApi, type AuthUser } from '../api/authApi';
+import { collegeApi, collegeRecordToUi, collegeUiToInput } from '../api/collegeApi';
+import { stageApi, stageRecordToUi } from '../api/stageApi';
+import { notificationApi, notificationRecordToUi } from '../api/notificationApi';
+import { importApi } from '../api/importApi';
+import { isConflictError } from '../api/client';
+import { STAGES } from '../constants/stages';
+import { Login } from '../components/Login';
 import AdminDash from '../components/dashboard/AdminDash';
 import ContentDash from '../components/dashboard/ContentDash';
 import ImplDash from '../components/dashboard/ImplDash';
@@ -13,73 +18,227 @@ import EngageDash from '../components/dashboard/EngageDash';
 import AllColleges from '../components/colleges/AllColleges';
 import Detail from '../components/colleges/Detail';
 import AddModal from '../components/colleges/AddModal';
-
-const STORAGE_KEY = 'promath_crm_v13';
+import { AppLayout } from '../layouts/AppLayout';
+import { LoadingState } from '../components/States';
 
 type View = 'dashboard' | 'colleges' | 'detail' | 'proposals';
 
+const errorMessage = (error: unknown) =>
+  isConflictError(error)
+    ? 'This record was updated by another user. Please refresh before saving.'
+    : error instanceof Error
+      ? error.message
+      : 'Something went wrong. Please try again.';
+
 const App: React.FC = () => {
-  const [role, setRole] = useState('');
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [data, setData] = useState<AppData>({ colleges: [], notifications: [] });
   const [view, setView] = useState<View>('dashboard');
   const [selectedId, setSelectedId] = useState('');
   const [showAdd, setShowAdd] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [error, setError] = useState('');
+
+  const logout = useCallback(() => {
+    authApi.logout();
+    setUser(null);
+    setLoaded(false);
+    setSelectedId('');
+    setView('dashboard');
+  }, []);
 
   useEffect(() => {
-    storage.get(STORAGE_KEY).then(res => {
-      if (res?.value) {
-        const parsed = JSON.parse(res.value);
-        setData({
-          colleges: parsed.colleges || [],
-          notifications: parsed.notifications || [],
-        });
-      } else {
-        setData({ colleges: sampleData(), notifications: sampleNotifs() });
-      }
+    const onUnauthorized = () => logout();
+    window.addEventListener('promath:unauthorized', onUnauthorized);
+    return () => window.removeEventListener('promath:unauthorized', onUnauthorized);
+  }, [logout]);
+
+  useEffect(() => {
+    authApi.me()
+      .then(setUser)
+      .catch(() => {
+        authApi.logout();
+        setUser(null);
+      })
+      .finally(() => setAuthChecked(true));
+  }, []);
+
+  const loadData = useCallback(async () => {
+    setLoaded(false);
+    setError('');
+    try {
+      const [collegeRecords, notificationRecords] = await Promise.all([
+        collegeApi.list(),
+        notificationApi.list(),
+      ]);
+      const colleges = await Promise.all(
+        collegeRecords.map(async record => {
+          const college = collegeRecordToUi(record);
+          const stages = await stageApi.list(record._id);
+          for (const stage of stages) college.stages[stage.stageName] = stageRecordToUi(stage);
+          return college;
+        }),
+      );
+      setData({
+        colleges,
+        notifications: notificationRecords.map(notificationRecordToUi),
+      });
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
       setLoaded(true);
-    });
-  }, []);
-
-  const persist = useCallback((d: AppData) => {
-    storage.set(STORAGE_KEY, JSON.stringify(d));
+    }
   }, []);
 
   useEffect(() => {
-    if (loaded) persist(data);
-  }, [data, loaded, persist]);
+    if (user) loadData();
+  }, [user, loadData]);
 
-  const updateCollege = (id: string, fn: (c: College) => College) => {
-    setData(d => ({
-      ...d,
-      colleges: d.colleges.map(c => c.id === id ? fn(c) : c),
+  const updateCollege = async (id: string, fn: (college: College) => College) => {
+    const current = data.colleges.find(college => college.id === id);
+    if (!current) return;
+    const next = fn(current);
+    setData(previous => ({
+      ...previous,
+      colleges: previous.colleges.map(college => college.id === id ? next : college),
     }));
+    try {
+      const record = await collegeApi.update(id, collegeUiToInput(next));
+      const saved = collegeRecordToUi(record);
+      saved.stages = next.stages;
+      saved.engagement_journey = next.engagement_journey;
+      saved.automation_journey = next.automation_journey;
+      saved.automation_journey_progress = next.automation_journey_progress;
+      saved.academic_year = next.academic_year;
+      saved.total_students = next.total_students;
+      setData(previous => ({
+        ...previous,
+        colleges: previous.colleges.map(college => college.id === id ? saved : college),
+      }));
+      setError('');
+    } catch (err) {
+      setError(errorMessage(err));
+      await loadData();
+    }
   };
 
-  const addCollege = (partial: Partial<College>) => {
-    const c = newCollege(partial);
-    setData(d => ({ ...d, colleges: [...d.colleges, c] }));
+  const addCollege = async (partial: Partial<College>) => {
+    try {
+      const record = await collegeApi.create(collegeUiToInput(partial));
+      setData(previous => ({
+        ...previous,
+        colleges: [...previous.colleges, collegeRecordToUi(record)],
+      }));
+      setError('');
+    } catch (err) {
+      setError(errorMessage(err));
+      throw err;
+    }
   };
 
-  const addColleges = (partials: Partial<College>[]) => {
-    const newOnes = partials.map(p => newCollege(p));
-    setData(d => ({ ...d, colleges: [...d.colleges, ...newOnes] }));
+  const addColleges = async (partials: Partial<College>[], fileName: string) => {
+    try {
+      await importApi.create(fileName, partials as Record<string, unknown>[]);
+      await importApi.list();
+      const records = await Promise.all(partials.map(partial => collegeApi.create(collegeUiToInput(partial))));
+      setData(previous => ({
+        ...previous,
+        colleges: [...previous.colleges, ...records.map(collegeRecordToUi)],
+      }));
+      setError('');
+    } catch (err) {
+      setError(errorMessage(err));
+      throw err;
+    }
   };
 
-  const deleteCollege = (id: string) => {
-    setData(d => ({ ...d, colleges: d.colleges.filter(c => c.id !== id) }));
-    if (selectedId === id) setView('colleges');
+  const deleteCollege = async (id: string) => {
+    try {
+      await collegeApi.delete(id);
+      setData(previous => ({
+        ...previous,
+        colleges: previous.colleges.filter(college => college.id !== id),
+      }));
+      if (selectedId === id) setView('colleges');
+      setError('');
+    } catch (err) {
+      setError(errorMessage(err));
+    }
   };
 
-  const addNotif = (n: Notification) => {
-    setData(d => ({ ...d, notifications: [...d.notifications, n] }));
+  const saveStage = async (
+    collegeId: string,
+    stageId: string,
+    stageData: Record<string, unknown>,
+    status: StageStatus,
+  ) => {
+    const college = data.colleges.find(item => item.id === collegeId);
+    if (!college) return;
+    const existing = college.stages[stageId];
+    const stageIndex = STAGES.findIndex(stage => stage.id === stageId);
+    const input = {
+      stageName: stageId,
+      stageIndex,
+      status,
+      remarks: JSON.stringify(stageData),
+      completedAt: status === 'completed' ? new Date().toISOString() : undefined,
+    };
+    try {
+      const record = existing?.id
+        ? await stageApi.update(collegeId, existing.id, input)
+        : await stageApi.create(collegeId, input);
+      setData(previous => ({
+        ...previous,
+        colleges: previous.colleges.map(item =>
+          item.id === collegeId
+            ? { ...item, stages: { ...item.stages, [stageId]: stageRecordToUi(record) } }
+            : item,
+        ),
+      }));
+      if (user?.role === 'admin' && status === 'completed') {
+        const stage = STAGES.find(item => item.id === stageId);
+        const notification = await notificationApi.create({
+          title: 'Stage completed',
+          message: `${college.name}: ${stage?.label || stageId} completed`,
+          targetRole: stage?.team || '',
+          type: 'stage',
+        });
+        setData(previous => ({
+          ...previous,
+          notifications: [notificationRecordToUi(notification), ...previous.notifications],
+        }));
+      }
+      setError('');
+    } catch (err) {
+      setError(errorMessage(err));
+    }
   };
 
-  const markNotifRead = (id: string) => {
-    setData(d => ({
-      ...d,
-      notifications: d.notifications.map(n => n.id === id ? { ...n, read: true } : n),
-    }));
+  const markNotifRead = async (id: string) => {
+    try {
+      const record = await notificationApi.markRead(id);
+      const updated = notificationRecordToUi(record);
+      setData(previous => ({
+        ...previous,
+        notifications: previous.notifications.map(notification => notification.id === id ? updated : notification),
+      }));
+    } catch (err) {
+      setError(errorMessage(err));
+    }
+  };
+
+  const deleteNotif = async (id: string) => {
+    try {
+      await notificationApi.delete(id);
+      setData(previous => ({
+        ...previous,
+        notifications: previous.notifications.filter(notification => notification.id !== id),
+      }));
+      setError('');
+    } catch (err) {
+      setError(errorMessage(err));
+    }
   };
 
   const selectCollege = (id: string) => {
@@ -87,55 +246,31 @@ const App: React.FC = () => {
     setView('detail');
   };
 
-  const selectedCollege = data.colleges.find(c => c.id === selectedId);
+  const handleLogin = async (email: string, password: string) => {
+    const response = await authApi.login(email, password);
+    setUser(response.user);
+    setView('dashboard');
+  };
 
-  if (!loaded) {
-    return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', fontFamily: 'var(--font-ui)' }}>Loading...</div>;
+  if (!authChecked || (user && !loaded)) {
+    return <div className="login-container"><LoadingState title="Loading Promath CRM..." message="Preparing your workspace." /></div>;
   }
 
-  if (!role) {
-    return (
-      <div className="login-container">
-        <div className="login-card">
-          <div style={{ textAlign: 'center', marginBottom: 32 }}>
-            <h1 style={{ fontSize: 28, fontFamily: 'var(--font-heading)', color: 'var(--accent)', margin: 0 }}>Promath CRM</h1>
-            <p style={{ color: '#6B7280', marginTop: 8 }}>Select your role to continue</p>
-          </div>
-          <div style={{ display: 'grid', gap: 12 }}>
-            {Object.entries(ROLES).map(([key, r]) => (
-              <button
-                key={key}
-                className="role-card"
-                onClick={() => setRole(key)}
-                style={{ borderLeft: `4px solid ${r.color}` }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <span style={{ fontSize: 24 }}>{r.icon}</span>
-                  <div style={{ textAlign: 'left' }}>
-                    <div style={{ fontWeight: 600, fontSize: 15 }}>{r.label}</div>
-                    <div style={{ fontSize: 12, color: '#6B7280' }}>{r.desc}</div>
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
+  if (!user) return <Login onLogin={handleLogin} />;
 
+  const role = user.role;
   const roleInfo = ROLES[role];
-  const navItems: { id: View | 'proposals'; label: string; icon: string }[] = [
-    { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-    { id: 'colleges', label: 'Colleges', icon: '🏫' },
+  const selectedCollege = data.colleges.find(college => college.id === selectedId);
+  const canUseBilling = role === 'admin' || role === 'billing';
+  const navItems: { id: View; label: string }[] = [
+    { id: 'dashboard', label: 'Dashboard' },
+    { id: 'colleges', label: role === 'admin' ? 'All Colleges' : 'My Assignments' },
   ];
-  if (role === 'billing') {
-    navItems.push({ id: 'proposals', label: 'Proposals', icon: '📄' });
-  }
+  if (canUseBilling) navItems.push({ id: 'proposals', label: 'Proposals' });
 
   const renderDashboard = () => {
     switch (role) {
-      case 'admin': return <AdminDash data={data} onSelect={selectCollege} updateCollege={updateCollege} markNotifRead={markNotifRead} />;
+      case 'admin': return <AdminDash data={data} userName={user.name} onSelect={selectCollege} onAdd={() => setShowAdd(true)} updateCollege={updateCollege} markNotifRead={markNotifRead} deleteNotif={deleteNotif} />;
       case 'content': return <ContentDash data={data} onSelect={selectCollege} />;
       case 'implementation': return <ImplDash data={data} onSelect={selectCollege} />;
       case 'billing': return <BillingDash />;
@@ -144,34 +279,29 @@ const App: React.FC = () => {
     }
   };
 
-  return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
-      <aside className="sidebar">
-        <div className="sidebar-header">
-          <h2 style={{ fontSize: 18, fontFamily: 'var(--font-heading)', color: '#fff', margin: 0 }}>Promath CRM</h2>
-        </div>
-        <div className="sidebar-role" style={{ background: roleInfo.bg, color: roleInfo.color }}>
-          <span>{roleInfo.icon}</span> {roleInfo.label}
-        </div>
-        <nav className="sidebar-nav">
-          {navItems.map(item => (
-            <button
-              key={item.id}
-              className={`nav-item ${view === item.id ? 'nav-item-active' : ''}`}
-              onClick={() => setView(item.id as View)}
-            >
-              <span>{item.icon}</span> {item.label}
-            </button>
-          ))}
-        </nav>
-        <div style={{ marginTop: 'auto', padding: 16 }}>
-          <button className="btn btn-secondary" style={{ width: '100%', color: '#fff', borderColor: 'rgba(255,255,255,0.2)' }} onClick={() => { setRole(''); setView('dashboard'); }}>
-            Switch Role
-          </button>
-        </div>
-      </aside>
+  const sidebarItems = navItems.map(item => ({
+    ...item,
+    icon: item.id === 'dashboard' ? '▥' : item.id === 'colleges' ? '♜' : '▤',
+  }));
+  const unreadForRole = data.notifications.filter(notification => notification.role === role && !notification.read).length;
 
-      <main className="main-content">
+  return (
+    <AppLayout
+      userName={user.name || roleInfo.label}
+      roleLabel={roleInfo.label}
+      roleIcon={roleInfo.icon}
+      items={sidebarItems}
+      activeView={view}
+      unread={unreadForRole}
+      onNavigate={id => setView(id as View)}
+      onLogout={logout}
+    >
+        {error && (
+          <div className="inline-alert error" style={{ marginBottom: 16 }}>
+            {error}
+            <button className="btn-icon" style={{ float: 'right' }} onClick={() => setError('')} title="Dismiss">x</button>
+          </div>
+        )}
         {view === 'dashboard' && renderDashboard()}
         {view === 'colleges' && (
           <AllColleges
@@ -190,19 +320,12 @@ const App: React.FC = () => {
             role={role}
             onBack={() => setView('colleges')}
             updateCollege={updateCollege}
-            addNotif={addNotif}
+            saveStage={saveStage}
           />
         )}
-        {view === 'proposals' && <ProposalGenerator data={data} />}
-      </main>
-
-      {showAdd && (
-        <AddModal
-          onClose={() => setShowAdd(false)}
-          onAdd={addCollege}
-        />
-      )}
-    </div>
+        {view === 'proposals' && canUseBilling && <ProposalGenerator data={data} />}
+      {showAdd && <AddModal onClose={() => setShowAdd(false)} onAdd={addCollege} />}
+    </AppLayout>
   );
 };
 

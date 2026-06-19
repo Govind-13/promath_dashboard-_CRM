@@ -35,6 +35,8 @@ export interface ProposalDoc {
   features: string[];
   notes: string;
   created_at: string;
+  proposal_number?: string;
+  status?: string;
 }
 
 export interface BillingStore {
