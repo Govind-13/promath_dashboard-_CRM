@@ -48,6 +48,33 @@ export class UsersService {
     return this.users.findOne({ email: (email ?? "").toLowerCase() }).exec();
   }
 
+  async setPasswordResetToken(email: string, tokenHash: string, expiresAt: Date) {
+    return this.users.findOneAndUpdate(
+      { email: (email ?? "").toLowerCase(), isActive: true },
+      { resetPasswordTokenHash: tokenHash, resetPasswordExpiresAt: expiresAt },
+      { returnDocument: "after" },
+    ).exec();
+  }
+
+  async resetPasswordWithToken(tokenHash: string, password: string) {
+    const passwordHash = await bcrypt.hash(password, 12);
+    return this.users.findOneAndUpdate(
+      {
+        resetPasswordTokenHash: tokenHash,
+        resetPasswordExpiresAt: { $gt: new Date() },
+        isActive: true,
+      },
+      {
+        $set: { passwordHash },
+        $unset: {
+          resetPasswordTokenHash: 1,
+          resetPasswordExpiresAt: 1,
+        },
+      },
+      { returnDocument: "after" },
+    ).exec();
+  }
+
   async findById(id: string) {
     return this.users.findById(id).exec();
   }

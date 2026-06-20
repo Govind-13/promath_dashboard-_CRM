@@ -32,6 +32,12 @@ export class User {
   @Prop({ default: true, index: true })
   isActive!: boolean;
 
+  @Prop({ default: "", select: false })
+  resetPasswordTokenHash?: string;
+
+  @Prop({ type: Date, default: null, select: false, index: true })
+  resetPasswordExpiresAt?: Date | null;
+
   createdAt!: Date;
   updatedAt!: Date;
 }

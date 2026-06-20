@@ -20,9 +20,19 @@ ADMIN_PASSWORD=<admin-password>
 ADMIN_NAME=<admin-name>
 VITE_API_BASE_URL=<public-nestjs-backend-url>
 NEST_API_URL=<public-nestjs-backend-url>
+APP_URL=<public-react-web-url>
+SMTP_HOST=<smtp-host>
+SMTP_PORT=587
+SMTP_USER=<smtp-username>
+SMTP_PASS=<smtp-password-or-app-password>
+SMTP_FROM=Promath CRM <no-reply@your-domain.com>
 ```
 
 Most platforms set `PORT` automatically.
+
+Password reset emails are sent by the NestJS API. `APP_URL` is used to build
+the reset link. For Gmail SMTP, use `smtp.gmail.com`, port `587`, the Gmail
+address as `SMTP_USER`, and a Google App Password as `SMTP_PASS`.
 `MONGODB_URI` is preferred; `MONGO_URI` remains supported for older
 deployments. On first backend start, the app creates an admin user from
 `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and `ADMIN_NAME` if no admin exists.

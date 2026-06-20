@@ -24,6 +24,7 @@
     "class-validator": "^0.15.1",
     "helmet": "^8.2.0",
     "mongoose": "latest",
+    "nodemailer": "^9.0.1",
     "reflect-metadata": "latest",
     "rxjs": "latest"
   },
@@ -32,6 +33,7 @@
     "@nestjs/schematics": "latest",
     "@nestjs/testing": "latest",
     "@types/node": "latest",
+    "@types/nodemailer": "^8.0.1",
     "typescript": "latest"
   }
 }

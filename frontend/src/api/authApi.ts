@@ -25,6 +25,16 @@ export const authApi = {
     setAuthToken(response.accessToken);
     return response;
   },
+  forgotPassword: (email: string) =>
+    apiClient<{ message: string }>('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
+  resetPassword: (token: string, password: string) =>
+    apiClient<{ message: string }>('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, password }),
+    }),
   me: () => apiClient<AuthUser>('/auth/me'),
   logout: clearAuthToken,
 };

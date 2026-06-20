@@ -260,7 +260,15 @@ const App: React.FC = () => {
     return <div className="login-container"><LoadingState title="Loading Promath CRM..." message="Preparing your workspace." /></div>;
   }
 
-  if (!user) return <Login onLogin={handleLogin} />;
+  if (!user) {
+    return (
+      <Login
+        onLogin={handleLogin}
+        onForgotPassword={email => authApi.forgotPassword(email)}
+        onResetPassword={(token, password) => authApi.resetPassword(token, password)}
+      />
+    );
+  }
 
   const availableRoles: UserRole[] = user.role === 'admin'
     ? ['admin', 'content', 'implementation', 'engagement', 'billing']

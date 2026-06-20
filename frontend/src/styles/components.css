@@ -386,6 +386,18 @@ textarea.input { resize: vertical; }
   font-size: 11px;
 }
 .login-submit { width: 100%; }
+.forgot-password-link, .back-to-login {
+  width: max-content;
+  padding: 0;
+  border: 0;
+  color: var(--accent);
+  background: transparent;
+  font-size: 11px;
+  font-weight: 600;
+}
+.forgot-password-link { margin-left: auto; margin-top: -6px; }
+.back-to-login { margin: 0 auto; color: var(--muted); }
+.forgot-password-link:hover, .back-to-login:hover { text-decoration: underline; }
 
 .workspace-select-page {
   min-height: 100vh;

@@ -86,6 +86,23 @@ async function main() {
     });
     assert.equal(wrongLogin.res.status, 401);
 
+    const unknownReset = await request("/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify({ email: "unknown-user@example.com" }),
+    });
+    assert.equal(unknownReset.res.status, 201);
+    assert.match(unknownReset.body.message, /reset link/i);
+
+    const invalidReset = await request("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify({
+        token: "x".repeat(64),
+        password: "NewPassword123!",
+      }),
+    });
+    assert.equal(invalidReset.res.status, 400);
+    assert.match(invalidReset.body.message, /invalid or has expired/i);
+
     const adminToken = await login("phase3-admin@example.com", "Phase3AdminPass123!");
     const admin = { Authorization: `Bearer ${adminToken}` };
     const currentAdmin = await request("/auth/me", { headers: admin });
