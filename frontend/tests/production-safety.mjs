@@ -9,6 +9,8 @@ const app = read('src/app/App.tsx');
 const client = read('src/api/client.ts');
 const proposal = read('src/components/dashboard/ProposalGenerator.tsx');
 const collegesView = read('src/components/colleges/AllColleges.tsx');
+const bulkUpload = read('src/components/BulkUploadModal.tsx');
+const excelUtils = read('src/utils/excel.ts');
 const sourceFiles = [];
 
 function collect(dir) {
@@ -30,6 +32,8 @@ assert.match(app, /role === 'admin' \|\| role === 'billing'/);
 assert.match(app, /role === 'admin' \? 'All Colleges' : 'My Assignments'/);
 assert.match(app, /onDelete=\{deleteCollege\}/);
 assert.match(collegesView, /onDelete=\{role === 'admin' \? onDelete : undefined\}/);
+assert.match(bulkUpload, /Download Format/);
+assert.match(excelUtils, /promath_college_upload_template\.csv/);
 assert.match(app, /collegeApi\.create/);
 assert.match(app, /collegeApi\.update/);
 assert.match(app, /collegeApi\.delete/);

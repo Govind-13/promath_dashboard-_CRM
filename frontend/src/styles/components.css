@@ -399,6 +399,37 @@ textarea.input { resize: vertical; }
 .back-to-login { margin: 0 auto; color: var(--muted); }
 .forgot-password-link:hover, .back-to-login:hover { text-decoration: underline; }
 
+.upload-template-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+  padding: 13px 14px;
+  border: 1px solid #b2ccff;
+  border-radius: 13px;
+  background: var(--accent-light);
+}
+.upload-template-row strong,
+.upload-template-row span { display: block; }
+.upload-template-row strong { color: var(--ink); font-size: 12px; }
+.upload-template-row span { margin-top: 2px; color: var(--muted); font-size: 10px; }
+.upload-columns {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: var(--muted);
+  background: var(--surface-alt);
+  font-size: 10px;
+  line-height: 1.6;
+}
+.upload-columns strong {
+  display: block;
+  color: var(--ink-soft);
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
 .workspace-select-page {
   min-height: 100vh;
   display: grid;
@@ -555,4 +586,6 @@ textarea.input { resize: vertical; }
   .workspace-grid { grid-template-columns: 1fr; }
   .workspace-card { min-height: 180px; padding: 22px; }
   .workspace-footer { align-items: center; flex-direction: column; text-align: center; }
+  .upload-template-row { align-items: stretch; flex-direction: column; }
+  .upload-template-row .btn { width: 100%; }
 }

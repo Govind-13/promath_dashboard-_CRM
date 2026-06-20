@@ -1,6 +1,10 @@
 import { useRef, useState } from 'react';
 import type { College } from '../types/college.types';
-import { parseExcelFile } from '../utils/excel';
+import {
+  COLLEGE_UPLOAD_HEADERS,
+  downloadCollegeUploadTemplate,
+  parseExcelFile,
+} from '../utils/excel';
 import { Modal } from './Modal';
 
 interface BulkUploadModalProps {
@@ -32,11 +36,27 @@ export function BulkUploadModal({ onClose, onUpload }: BulkUploadModalProps) {
 
   return (
     <Modal title="Bulk upload colleges" subtitle="Import college records from Excel or CSV." onClose={onClose} size="sm">
+      <div className="upload-template-row">
+        <div>
+          <strong>Need the correct format?</strong>
+          <span>Download the sample, fill your college data, and upload it here.</span>
+        </div>
+        <button className="btn btn-secondary" type="button" onClick={downloadCollegeUploadTemplate}>
+          ↓ Download Format
+        </button>
+      </div>
+
       <button className="empty-state" type="button" onClick={() => inputRef.current?.click()} style={{ width: '100%' }}>
         <div className="state-icon">⇧</div>
         <div className="state-title">{file ? file.name : 'Choose Excel or CSV file'}</div>
         <div className="state-message">Supported formats: .xlsx and .csv</div>
       </button>
+
+      <div className="upload-columns">
+        <strong>Accepted columns</strong>
+        <span>{COLLEGE_UPLOAD_HEADERS.join(' · ')}</span>
+      </div>
+
       <input
         ref={inputRef}
         hidden

@@ -5,6 +5,30 @@ import readXlsxFile from 'read-excel-file/browser';
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const MAX_ROWS = 5000;
 
+export const COLLEGE_UPLOAD_HEADERS = [
+  'College Name',
+  'College Type',
+  'Academic Year',
+  'Contact Name',
+  'Contact Designation',
+  'Phone',
+  'Email',
+  'Location',
+  'Total Students',
+] as const;
+
+const SAMPLE_UPLOAD_ROW = {
+  'College Name': 'Sample Engineering College',
+  'College Type': 'Autonomous',
+  'Academic Year': '2026-27',
+  'Contact Name': 'Dr. Kumar',
+  'Contact Designation': 'Principal',
+  Phone: '9876543210',
+  Email: 'principal@example.com',
+  Location: 'Chennai',
+  'Total Students': '1200',
+};
+
 const COL_MAP: Record<string, keyof College> = {
   'college name': 'name',
   name: 'name',
@@ -74,4 +98,20 @@ export async function parseExcelFile(file: File): Promise<Partial<College>[]> {
   }
   const rows = extension === 'csv' ? await parseCsv(file) : await parseXlsx(file);
   return mapRows(rows);
+}
+
+export function downloadCollegeUploadTemplate() {
+  const csv = Papa.unparse({
+    fields: [...COLLEGE_UPLOAD_HEADERS],
+    data: [SAMPLE_UPLOAD_ROW],
+  });
+  const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = 'promath_college_upload_template.csv';
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
 }
