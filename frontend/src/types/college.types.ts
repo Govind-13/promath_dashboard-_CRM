@@ -18,6 +18,7 @@ export interface College {
   email: string;
   location: string;
   total_students: string;
+  pipeline_stage?: string;
   current_status?: string;
   additional_comments?: string;
   created_at: string;

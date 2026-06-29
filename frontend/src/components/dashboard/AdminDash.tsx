@@ -25,7 +25,7 @@ const AdminDash: React.FC<Props> = ({
   userName,
   onSelect,
   onAdd,
-  updateCollege: _,
+  updateCollege,
   markNotifRead,
   deleteNotif: _deleteNotif,
 }) => {
@@ -45,23 +45,28 @@ const AdminDash: React.FC<Props> = ({
     const value = Number(college.stages.pricing_negotiation?.data?.total_value) || 0;
     return sum + value;
   }, 0);
-  const activePipeline = colleges.filter(college => getProgress(college) < 100).length;
+  const getPipelineGroup = (college: College) => {
+    if (GROUPS.includes(college.pipeline_stage || '')) return college.pipeline_stage || 'Discovery';
+    return getProgress(college) === 100 ? 'Complete' : STAGES[getStageIdx(college)]?.group || 'Discovery';
+  };
+
+  const activePipeline = colleges.filter(college => getPipelineGroup(college) !== 'Complete').length;
   const mouSigned = colleges.filter(college => college.stages.mou_signing?.status === 'completed').length;
-  const inImplementation = colleges.filter(college => STAGES[getStageIdx(college)]?.group === 'Implementation').length;
-  const liveColleges = colleges.filter(college => getProgress(college) === 100).length;
+  const inImplementation = colleges.filter(college => getPipelineGroup(college) === 'Implementation').length;
+  const liveColleges = colleges.filter(college => getPipelineGroup(college) === 'Complete').length;
 
   const kanbanData = GROUPS.map(group => {
-    if (group === 'Complete') {
-      return { group, colleges: filteredColleges.filter(college => getProgress(college) === 100) };
-    }
-    const stageIds = STAGES.filter(stage => stage.group === group).map(stage => stage.id);
     return {
       group,
-      colleges: filteredColleges.filter(college =>
-        getProgress(college) < 100 && stageIds.includes(STAGES[getStageIdx(college)]?.id),
-      ),
+      colleges: filteredColleges.filter(college => getPipelineGroup(college) === group),
     };
   });
+
+  const moveCollege = (collegeId: string, targetGroup: string) => {
+    const college = colleges.find(item => item.id === collegeId);
+    if (!college || getPipelineGroup(college) === targetGroup) return;
+    updateCollege(collegeId, current => ({ ...current, pipeline_stage: targetGroup }));
+  };
 
   const unreadNotifs = data.notifications
     .filter(notification => notification.role === 'admin' && !notification.read)
@@ -122,6 +127,7 @@ const AdminDash: React.FC<Props> = ({
           <KanbanBoard
             columns={kanbanData.map(item => ({ title: item.group, colleges: item.colleges }))}
             onSelect={onSelect}
+            onMove={moveCollege}
           />
         </div>
 
@@ -153,7 +159,7 @@ const AdminDash: React.FC<Props> = ({
                   <td><strong>{college.name}</strong></td>
                   <td>{college.college_type || '—'}</td>
                   <td>{college.location || '—'}</td>
-                  <td><span className="pill pill-primary">{getProgress(college) === 100 ? 'Complete' : STAGES[getStageIdx(college)]?.group}</span></td>
+                  <td><span className="pill pill-primary">{getPipelineGroup(college)}</span></td>
                   <td>
                     <div className="progress-wrap">
                       <div className="progress-bar"><div className="progress-fill" style={{ width: `${getProgress(college)}%` }} /></div>

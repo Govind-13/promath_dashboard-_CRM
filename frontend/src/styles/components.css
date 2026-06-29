@@ -200,6 +200,12 @@ textarea.input { resize: vertical; }
   border: 1px solid var(--border-soft);
   border-radius: 14px;
   background: var(--surface-alt);
+  transition: border-color .16s ease, background .16s ease, box-shadow .16s ease;
+}
+.kanban-column.drag-over {
+  border-color: #2e90fa;
+  background: #eff6ff;
+  box-shadow: inset 0 0 0 1px rgba(46,144,250,.16);
 }
 .kanban-column-header {
   display: flex;
@@ -224,7 +230,10 @@ textarea.input { resize: vertical; }
   text-align: left;
   box-shadow: var(--shadow-xs);
   transition: .16s ease;
+  cursor: grab;
 }
+.kanban-card:active { cursor: grabbing; }
+.kanban-card.dragging { opacity: .48; transform: scale(.98); }
 .kanban-card:hover { border-color: #b2ccff; box-shadow: var(--shadow-sm); transform: translateY(-1px); }
 .kanban-card strong { display: block; font-size: 12px; line-height: 1.35; }
 .kanban-card small { display: block; margin-top: 6px; color: var(--muted); font-size: 10px; }
