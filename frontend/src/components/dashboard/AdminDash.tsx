@@ -7,6 +7,7 @@ import { StatCard } from '../StatCard';
 import { SearchInput } from '../SearchInput';
 import { KanbanBoard } from '../KanbanBoard';
 import { NotificationPanel } from '../NotificationPanel';
+import { Modal } from '../Modal';
 
 interface Props {
   data: AppData;
@@ -30,6 +31,7 @@ const AdminDash: React.FC<Props> = ({
   deleteNotif: _deleteNotif,
 }) => {
   const [query, setQuery] = useState('');
+  const [selectedStat, setSelectedStat] = useState<string | null>(null);
   const colleges = data.colleges;
 
   const filteredColleges = useMemo(() => {
@@ -86,13 +88,39 @@ const AdminDash: React.FC<Props> = ({
     : `₹${totalValue.toLocaleString('en-IN')}`;
 
   const stats = [
-    { label: 'Total Colleges', value: colleges.length, icon: '🏛️' },
-    { label: 'Active Pipeline', value: activePipeline, icon: '📈' },
-    { label: 'MOUs Signed', value: mouSigned, icon: '📄' },
-    { label: 'In Implementation', value: inImplementation, icon: '⚡' },
-    { label: 'Live Colleges', value: liveColleges, icon: '✅' },
-    { label: 'Pipeline Value', value: pipelineValue, icon: '💰' },
+    { label: 'Total Colleges', value: colleges.length, icon: '🏛️', colleges },
+    {
+      label: 'Active Pipeline',
+      value: activePipeline,
+      icon: '📈',
+      colleges: colleges.filter(college => getPipelineGroup(college) !== 'Complete'),
+    },
+    {
+      label: 'MOUs Signed',
+      value: mouSigned,
+      icon: '📄',
+      colleges: colleges.filter(college => college.stages.mou_signing?.status === 'completed'),
+    },
+    {
+      label: 'In Implementation',
+      value: inImplementation,
+      icon: '⚡',
+      colleges: colleges.filter(college => getPipelineGroup(college) === 'Implementation'),
+    },
+    {
+      label: 'Live Colleges',
+      value: liveColleges,
+      icon: '✅',
+      colleges: colleges.filter(college => getPipelineGroup(college) === 'Complete'),
+    },
+    {
+      label: 'Pipeline Value',
+      value: pipelineValue,
+      icon: '💰',
+      colleges: colleges.filter(college => Number(college.stages.pricing_negotiation?.data?.total_value) > 0),
+    },
   ];
+  const selectedStatData = stats.find(stat => stat.label === selectedStat);
   const recentColleges = [...colleges]
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, 6);
@@ -114,7 +142,13 @@ const AdminDash: React.FC<Props> = ({
 
       <section className="dashboard-stats grid-6">
         {stats.map(stat => (
-          <StatCard key={stat.label} {...stat} />
+          <StatCard
+            key={stat.label}
+            label={stat.label}
+            value={stat.value}
+            icon={stat.icon}
+            onClick={() => setSelectedStat(stat.label)}
+          />
         ))}
       </section>
 
@@ -173,6 +207,50 @@ const AdminDash: React.FC<Props> = ({
           </table>
         </div>
       </section>
+
+      {selectedStatData && (
+        <Modal
+          title={selectedStatData.label}
+          subtitle={`${selectedStatData.colleges.length} college${selectedStatData.colleges.length === 1 ? '' : 's'}`}
+          onClose={() => setSelectedStat(null)}
+          size="md"
+        >
+          {selectedStatData.colleges.length === 0 ? (
+            <div className="empty-state">
+              <div className="state-icon">⌕</div>
+              <div className="state-title">No colleges found</div>
+              <p>This card does not have matching colleges yet.</p>
+            </div>
+          ) : (
+            <div className="stat-college-list">
+              {selectedStatData.colleges.map(college => {
+                const value = Number(college.stages.pricing_negotiation?.data?.total_value) || 0;
+                const badge = selectedStatData.label === 'Pipeline Value' && value > 0
+                  ? `₹${value.toLocaleString('en-IN')}`
+                  : getPipelineGroup(college);
+
+                return (
+                  <button
+                    key={college.id}
+                    type="button"
+                    className="stat-college-item"
+                    onClick={() => {
+                      setSelectedStat(null);
+                      onSelect(college.id);
+                    }}
+                  >
+                    <span>
+                      <strong>{college.name}</strong>
+                      <small>{college.location || college.college_type || 'No location added'}</small>
+                    </span>
+                    <span className="pill pill-primary">{badge}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </Modal>
+      )}
     </div>
   );
 };
