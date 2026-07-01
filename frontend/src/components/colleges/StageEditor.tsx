@@ -25,15 +25,23 @@ const Field: React.FC<{ label: string; value: string; onChange: (v: string) => v
 
 const StageEditor: React.FC<Props> = ({ stage, stageData, college, canEdit, onUpdate }) => {
   const [form, setForm] = useState<Record<string, unknown>>(stageData.data || {});
+  const [editingCompleted, setEditingCompleted] = useState(false);
 
-  useEffect(() => { setForm(stageData.data || {}); }, [stageData]);
+  useEffect(() => {
+    setForm(stageData.data || {});
+    setEditingCompleted(false);
+  }, [stageData]);
 
   const upd = (k: string, v: unknown) => setForm(f => ({ ...f, [k]: v }));
   const f = (k: string) => (form[k] as string) || '';
   const completed = stageData.status === 'completed';
-  const editable = canEdit && !completed;
+  const editable = canEdit && (!completed || editingCompleted);
 
   const saveDraft = () => onUpdate(form, stageData.status === 'not_started' ? 'in_progress' : stageData.status);
+  const saveCompletedEdit = () => {
+    onUpdate(form, 'completed');
+    setEditingCompleted(false);
+  };
   const markInProgress = () => onUpdate(form, 'in_progress');
   const markCompleted = () => onUpdate(form, 'completed');
 
@@ -141,17 +149,45 @@ const StageEditor: React.FC<Props> = ({ stage, stageData, college, canEdit, onUp
             on {new Date(stageData.completed_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
           </span>
         )}
+        {completed && canEdit && !editingCompleted && (
+          <button
+            className="btn btn-secondary"
+            style={{ marginLeft: 'auto', minHeight: 30, padding: '5px 12px' }}
+            onClick={() => setEditingCompleted(true)}
+          >
+            Edit
+          </button>
+        )}
       </div>
 
       {renderFields()}
 
       {editable && (
         <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-          {stageData.status === 'not_started' && (
-            <button className="btn btn-secondary" onClick={markInProgress}>Mark In Progress</button>
+          {completed && editingCompleted ? (
+            <>
+              <button className="btn btn-secondary" onClick={() => {
+                setForm(stageData.data || {});
+                setEditingCompleted(false);
+              }}>
+                Cancel
+              </button>
+              <button className="btn btn-primary" onClick={saveCompletedEdit}>Save Changes</button>
+            </>
+          ) : (
+            <>
+              {stageData.status === 'not_started' && (
+                <button className="btn btn-secondary" onClick={markInProgress}>Mark In Progress</button>
+              )}
+              <button className="btn btn-secondary" onClick={saveDraft}>Save Draft</button>
+              <button className="btn btn-primary" onClick={markCompleted}>Mark Completed</button>
+            </>
           )}
-          <button className="btn btn-secondary" onClick={saveDraft}>Save Draft</button>
-          <button className="btn btn-primary" onClick={markCompleted}>Mark Completed</button>
+        </div>
+      )}
+      {completed && canEdit && !editingCompleted && (
+        <div style={{ marginTop: 12, color: '#667085', fontSize: 12 }}>
+          Click Edit to update completed stage details.
         </div>
       )}
     </div>
