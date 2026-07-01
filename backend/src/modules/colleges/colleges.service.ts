@@ -2,12 +2,25 @@ import { ConflictException, Injectable, NotFoundException } from "@nestjs/common
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { AuthUser } from "../../shared/auth-user";
+import { StageUpdate, StageUpdateDocument } from "../stages/stage-update.schema";
 import { College, CollegeDocument } from "./college.schema";
 import { CollegeDto } from "./dto";
 
+const PIPELINE_STAGE_MAP: Record<string, { stageName: string; stageIndex: number; status: string }> = {
+  Discovery: { stageName: "initial_meeting", stageIndex: 0, status: "in_progress" },
+  Deal: { stageName: "pricing_negotiation", stageIndex: 3, status: "in_progress" },
+  Content: { stageName: "syllabus_submission", stageIndex: 5, status: "in_progress" },
+  Implementation: { stageName: "student_data", stageIndex: 8, status: "in_progress" },
+  Onboarding: { stageName: "orientation", stageIndex: 13, status: "in_progress" },
+  Complete: { stageName: "orientation", stageIndex: 13, status: "completed" },
+};
+
 @Injectable()
 export class CollegesService {
-  constructor(@InjectModel(College.name) private readonly colleges: Model<CollegeDocument>) {}
+  constructor(
+    @InjectModel(College.name) private readonly colleges: Model<CollegeDocument>,
+    @InjectModel(StageUpdate.name) private readonly stages: Model<StageUpdateDocument>,
+  ) {}
 
   list() {
     return this.colleges.find().sort({ updatedAt: -1 }).lean().then(rows =>
@@ -30,13 +43,15 @@ export class CollegesService {
   }
 
   async create(dto: CollegeDto, user: AuthUser) {
-    return this.colleges.create({
+    const created = await this.colleges.create({
       ...this.pick(dto),
       name: dto.name,
       createdBy: user.sub,
       updatedBy: user.sub,
       version: 1,
     });
+    await this.syncPipelineStageUpdate(String(created._id), created.currentStage || created.pipeline_stage, user);
+    return created;
   }
 
   async update(id: string, dto: CollegeDto, user: AuthUser) {
@@ -49,10 +64,17 @@ export class CollegesService {
         currentVersion: current.version,
       });
     }
-    Object.assign(current, this.pick(dto));
+    const previousStage = current.currentStage || current.pipeline_stage || "";
+    const picked = this.pick(dto);
+    Object.assign(current, picked);
     current.updatedBy = user.sub;
     current.version = (current.version || 1) + 1;
-    return current.save();
+    const saved = await current.save();
+    const nextStage = saved.currentStage || saved.pipeline_stage || "";
+    if (nextStage && nextStage !== previousStage) {
+      await this.syncPipelineStageUpdate(id, nextStage, user);
+    }
+    return saved;
   }
 
   async delete(id: string) {
@@ -101,5 +123,39 @@ export class CollegesService {
       result.pipeline_stage = stage;
     }
     return result;
+  }
+
+  private async syncPipelineStageUpdate(collegeId: string, pipelineStage: string | undefined, user: AuthUser) {
+    if (!pipelineStage) return;
+    const stage = PIPELINE_STAGE_MAP[pipelineStage];
+    if (!stage) return;
+
+    const remarks = JSON.stringify({
+      source: "kanban_drag_drop",
+      pipelineStage,
+      updatedAt: new Date().toISOString(),
+    });
+    const existing = await this.stages.findOne({ collegeId, stageName: stage.stageName });
+    if (existing) {
+      existing.stageIndex = stage.stageIndex;
+      existing.status = stage.status;
+      existing.remarks = remarks;
+      if (stage.status === "completed") {
+        existing.completedBy = user.sub;
+        existing.completedAt = existing.completedAt ?? new Date();
+      }
+      await existing.save();
+      return;
+    }
+
+    await this.stages.create({
+      collegeId,
+      stageName: stage.stageName,
+      stageIndex: stage.stageIndex,
+      status: stage.status,
+      remarks,
+      completedBy: stage.status === "completed" ? user.sub : "",
+      completedAt: stage.status === "completed" ? new Date() : undefined,
+    });
   }
 }
