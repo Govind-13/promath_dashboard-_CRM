@@ -10,13 +10,23 @@ export class CollegesService {
   constructor(@InjectModel(College.name) private readonly colleges: Model<CollegeDocument>) {}
 
   list() {
-    return this.colleges.find().sort({ updatedAt: -1 }).lean();
+    return this.colleges.find().sort({ updatedAt: -1 }).lean().then(rows =>
+      rows.map(row => ({
+        ...row,
+        currentStage: row.currentStage || row.pipeline_stage || "",
+        pipeline_stage: row.pipeline_stage || row.currentStage || "",
+      })),
+    );
   }
 
   async get(id: string) {
     const college = await this.colleges.findById(id).lean();
     if (!college) throw new NotFoundException("College not found");
-    return college;
+    return {
+      ...college,
+      currentStage: college.currentStage || college.pipeline_stage || "",
+      pipeline_stage: college.pipeline_stage || college.currentStage || "",
+    };
   }
 
   async create(dto: CollegeDto, user: AuthUser) {
@@ -74,6 +84,7 @@ export class CollegesService {
       "collegeType",
       "assignedTo",
       "currentStage",
+      "pipeline_stage",
       "status",
       "priority",
       "source",
@@ -84,6 +95,11 @@ export class CollegesService {
       if (dto[field] !== undefined) result[field] = dto[field];
     }
     if (typeof result.email === "string") result.email = result.email.toLowerCase();
+    const stage = result.currentStage ?? result.pipeline_stage;
+    if (typeof stage === "string") {
+      result.currentStage = stage;
+      result.pipeline_stage = stage;
+    }
     return result;
   }
 }

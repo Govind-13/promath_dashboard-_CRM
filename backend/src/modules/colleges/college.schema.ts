@@ -44,6 +44,9 @@ export class College {
   @Prop({ default: "", trim: true, index: true })
   currentStage!: string;
 
+  @Prop({ default: "", trim: true, index: true })
+  pipeline_stage!: string;
+
   @Prop({ default: "active", trim: true, index: true })
   status!: string;
 

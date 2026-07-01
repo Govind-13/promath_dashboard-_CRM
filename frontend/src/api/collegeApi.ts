@@ -16,6 +16,7 @@ export interface CollegeRecord {
   collegeType: string;
   assignedTo: string;
   currentStage: string;
+  pipeline_stage?: string;
   status: string;
   priority: string;
   source: string;
@@ -63,7 +64,7 @@ export const collegeRecordToUi = (record: CollegeRecord): College => ({
   email: record.email || '',
   location: record.location || '',
   total_students: '',
-  pipeline_stage: record.currentStage || '',
+  pipeline_stage: record.currentStage || record.pipeline_stage || '',
   current_status: record.status || '',
   additional_comments: record.notes || '',
   created_at: record.createdAt,

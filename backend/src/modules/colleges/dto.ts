@@ -25,6 +25,7 @@ export class CollegeDto {
   @IsOptional() @IsString() collegeType?: string;
   @IsOptional() @IsString() assignedTo?: string;
   @IsOptional() @IsString() currentStage?: string;
+  @IsOptional() @IsString() pipeline_stage?: string;
   @IsOptional() @IsString() status?: string;
   @IsOptional() @IsString() priority?: string;
   @IsOptional() @IsString() source?: string;
@@ -52,6 +53,7 @@ export class CreateCollegeDto {
   @IsOptional() @IsString() collegeType?: string;
   @IsOptional() @IsString() assignedTo?: string;
   @IsOptional() @IsString() currentStage?: string;
+  @IsOptional() @IsString() pipeline_stage?: string;
   @IsOptional() @IsString() status?: string;
   @IsOptional() @IsString() priority?: string;
   @IsOptional() @IsString() source?: string;
